@@ -1,4 +1,4 @@
-use neuron::{AND, OR, XOR, delta, heb, back, heb_dig, delta_dig};
+use neuron::{AND, OR, XOR, delta, heb, back, heb_dig, delta_dig, back_dig};
 
 const ZERO: [f64; 15] = [
     -1.0, -1.0, -1.0,
@@ -41,5 +41,11 @@ fn main() {
     delta_dig(&ONE);
     delta_dig(&TWO);
 
-    back();
+    back(&AND);
+    back(&OR);
+    back(&XOR);
+
+    back_dig(&ZERO);
+    back_dig(&ONE);
+    back_dig(&TWO);
 }

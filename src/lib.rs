@@ -28,7 +28,7 @@ pub const ZERO: [f64; 15] = [
      1.0, -1.0,  1.0,
      1.0, -1.0,  1.0,
      1.0, -1.0,  1.0,
-     1.0,  1.0,  1.0, 
+     1.0,  1.0,  1.0,
 ];
 
 pub const ONE: [f64; 15] = [
@@ -67,7 +67,7 @@ pub fn heb_dig(mas: &[f64; 15]) {
     let mut neurons = [
         hebb::Neuron::new(15, 1.0),
         hebb::Neuron::new(15, 1.0),
-        hebb::Neuron::new(15, 1.0), 
+        hebb::Neuron::new(15, 1.0),
     ];
 
     for (digit_index, digit) in digits.iter().enumerate() {
@@ -157,14 +157,22 @@ pub fn delta_dig(mas: &[f64; 15]) {
     println!("\nRecognized digit: {}", names[best_digit]);
 }
 
-pub fn back() {
+
+pub fn back(mas: &[([f64; 2], f64); 4]) {
     println!("\n\nBackprop:");
-    let dataset = vec![
-        (vec![0.0, 0.0], vec![0.0]),
-        (vec![0.0, 1.0], vec![1.0]),
-        (vec![1.0, 0.0], vec![1.0]),
-        (vec![1.0, 1.0], vec![0.0]),
-    ];
+    let dataset: Vec<(Vec<f64>, Vec<f64>)> = mas
+        .iter()
+        .map(|(inputs, target)| {
+            let inputs = inputs
+                .iter()
+                .map(|x| (x + 1.0) / 2.0)
+                .collect();
+
+            let target = vec![(target + 1.0) / 2.0];
+
+            (inputs, target)
+        })
+        .collect();
     let mut network = backprop::Network::new(&[2, 4, 1], 0.5);
     let epochs = 20_000;
     for epoch in 0..epochs {
@@ -179,19 +187,77 @@ pub fn back() {
             );
         }
     }
+
     println!("\nResults:");
-
-    for (inputs, targets) in &dataset {
-        let output = network.predict(inputs);
-
-        let predicted = if output[0] >= 0.5 { 1 } else { 0 };
-
+    for (inputs, expected) in mas {
+        let converted: Vec<f64> = inputs
+            .iter()
+            .map(|x| (x + 1.0) / 2.0)
+            .collect();
+        let output = network.predict(&converted);
+        let predicted = if output[0] >= 0.5 { 1 } else { -1 };
         println!(
             "Input: {:?}, Expected: {}, Output: {:.4}, Predicted: {}",
             inputs,
-            targets[0],
+            expected,
             output[0],
             predicted
         );
     }
 }
+
+
+pub fn back_dig(mas: &[f64; 15]) {
+    println!("\n\nBackprop DIGIT:");
+
+    let dataset: Vec<(Vec<f64>, Vec<f64>)> = vec![
+        (ZERO.to_vec(), vec![1.0, 0.0, 0.0]),
+        (ONE.to_vec(),  vec![0.0, 1.0, 0.0]),
+        (TWO.to_vec(),  vec![0.0, 0.0, 1.0]),
+    ]
+        .into_iter()
+        .map(|(inputs, targets)| {
+            let inputs = inputs
+                .iter()
+                .map(|x| (x + 1.0) / 2.0)
+                .collect();
+
+            (inputs, targets)
+        })
+        .collect();
+
+    let mut network = backprop::Network::new(&[15, 10, 3], 0.1);
+    let epochs = 10_000;
+    for epoch in 0..epochs {
+        for (inputs, targets) in &dataset {
+            network.train(inputs, targets);
+        }
+        if epoch % 1000 == 0 {
+            println!(
+                "Epoch: {}, MSE: {:.6}",
+                epoch,
+                network.mse(&dataset)
+            );
+        }
+    }
+    let converted: Vec<f64> = mas
+        .iter()
+        .map(|x| (x + 1.0) / 2.0)
+        .collect();
+    let output = network.predict(&converted);
+
+    let names = ["Zero", "One", "Two"];
+
+    println!("\nRecognition results:");
+    for (index, score) in output.iter().enumerate() {
+        println!("{}: {:.4}", names[index], score);
+    }
+    let recognized = output
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.total_cmp(b.1))
+        .unwrap()
+        .0;
+    println!("\nRecognized digit: {}", names[recognized]);
+}
+
